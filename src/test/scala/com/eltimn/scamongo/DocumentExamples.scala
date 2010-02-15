@@ -43,7 +43,7 @@ object DocumentExamples extends Specification {
 
 	doFirst {
 		// create a Mongo instance
-		val mongoHost = MongoHost("localhost", 27017)
+		val mongoHost = MongoHost("127.0.0.1", 27017)
 		// define the dbs
 		MongoDB.defineDb(DefaultMongoIdentifier, MongoAddress(mongoHost, "test_document"))
 		MongoDB.defineDb(TestDBa, MongoAddress(mongoHost, "test_document_a"))

@@ -35,7 +35,7 @@ object DirectExamples extends Specification {
 
 	doFirst { 
 		// define the db
-		MongoDB.defineDb(DefaultMongoIdentifier, MongoAddress(MongoHost("localhost", 27017), "test_direct"))
+		MongoDB.defineDb(DefaultMongoIdentifier, MongoAddress(MongoHost("127.0.0.1", 27017), "test_direct"))
 	}
 
 	import com.mongodb.util.JSON // Mongo parser/serializer

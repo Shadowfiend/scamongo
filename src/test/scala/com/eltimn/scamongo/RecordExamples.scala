@@ -42,7 +42,7 @@ object RecordExamples extends Specification {
 
 	doFirst {
 		// define the db
-		MongoDB.defineDb(DefaultMongoIdentifier, MongoAddress(MongoHost("localhost", 27017), "test_record"))
+		MongoDB.defineDb(DefaultMongoIdentifier, MongoAddress(MongoHost("127.0.0.1", 27017), "test_record"))
 	}
 
 	"TestRecord example" in {

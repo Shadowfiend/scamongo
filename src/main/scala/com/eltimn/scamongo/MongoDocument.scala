@@ -26,15 +26,19 @@ import com.mongodb._
 trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 	self: BaseDocument =>
 
+  var errors = List()
+
 	def _id: Any
 
 	def meta: MongoDocumentMeta[BaseDocument]
+
+  def validate : Boolean
+	def save = meta.save(this)
 
 	def delete {
 		meta.delete("_id", _id)
 	}
 
-	def save = meta.save(this)
 
 	def getRef: MongoRef = MongoRef(meta.collectionName, _id.toString)
 }
@@ -182,18 +186,37 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	/*
 	* Save a document to the db
 	*/
-	def save(in: BaseDocument) {
-		MongoDB.use(mongoIdentifier) ( db => {
-			save(in, db)
-		})
+	def save(in: BaseDocument) : Boolean = {
+    MongoDB.use(mongoIdentifier) (db => {
+      save(in, db)
+    })
 	}
 
 	/*
 	* Save a document to the db using the given Mongo instance
 	*/
-	def save(in: BaseDocument, db: DB) {
-		db.getCollection(collectionName).save(JObjectParser.parse(toJObject(in)))
+	def save(in: BaseDocument, db: DB) : Boolean = {
+    in match {
+      case md:MongoDocument[BaseDocument] => 
+        md.validate
+        md.errors match {
+          case List() =>
+            saveWithoutValidation(in, db)
+            true
+          case _ => false
+        }
+      case _ =>
+        saveWithoutValidation(in, db)
+        true
+    }
 	}
+
+  /*
+  * Save a document to the db using the given Mongo instance, without validations.
+  */
+  def saveWithoutValidation(in: BaseDocument, db: DB) = {
+    db.getCollection(collectionName).save(JObjectParser.parse(toJObject(in)))
+  }
 
 	/*
 	* Update document with a JObject query using the given Mongo instance
@@ -206,9 +229,28 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	* Update document with a JObject query
 	*/
 	def update(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) {
+    newbd match {
+      case md:MongoDocument[BaseDocument] => 
+        md.validate
+        md.errors match {
+          case List() =>
+            updateWithoutValidation(qry, newbd, opts :_*)
+            true
+          case _ => false
+        }
+      case _ =>
+        updateWithoutValidation(qry, newbd, opts :_*)
+        true
+    }
+	}
+
+  /*
+  * Update document with a JObject query, without validations.
+  */
+  def updateWithoutValidation(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) {
 		MongoDB.use(mongoIdentifier) ( db => {
 			update(qry, newbd, db, opts :_*)
 		})
-	}
+  }
 
 }
