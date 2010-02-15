@@ -39,7 +39,7 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 
 	def meta: MongoDocumentMeta[BaseDocument]
 
-  protected var _errors:List[DocumentError] = List()
+  private var _errors:List[DocumentError] = List()
   def errors = _errors
 
   def validations:List[()=>Option[DocumentError]] = List()
