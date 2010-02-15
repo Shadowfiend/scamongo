@@ -40,20 +40,21 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 
 	def meta: MongoDocumentMeta[BaseDocument]
 
-  var errors:List[DocumentError] = List()
-  val validations:List[()=>Option[DocumentError]]
+  protected val _errors:List[DocumentError] = List()
+  def errors = _errors
 
+  protected var validations:List[()=>Option[DocumentError]]
   def validate : Boolean = {
-    errors = List()
+    _errors = List()
 
     validations foreach { validation =>
       validation() match {
-        case Some(error) => errors = error :: errors
+        case Some(error) => _errors = error :: _errors
         case _ => true
       }
     }
 
-    errors match {
+    _errors match {
       case List() => true
       case _ => false
     }
