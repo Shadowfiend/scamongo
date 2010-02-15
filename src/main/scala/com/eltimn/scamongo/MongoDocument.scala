@@ -35,7 +35,6 @@ case class FieldError(field: String, message: String) extends DocumentError
 trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 	self: BaseDocument =>
 
-
 	def _id: Any
 
 	def meta: MongoDocumentMeta[BaseDocument]
@@ -43,7 +42,8 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
   protected var _errors:List[DocumentError] = List()
   def errors = _errors
 
-  protected var validations:List[()=>Option[DocumentError]]
+  def validations:List[()=>Option[DocumentError]] = List()
+
   def validate : Boolean = {
     _errors = List()
 
