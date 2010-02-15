@@ -39,25 +39,16 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 
 	def meta: MongoDocumentMeta[BaseDocument]
 
-  private var _errors:List[DocumentError] = List()
-  def errors = _errors
-
   def validations:List[()=>Option[DocumentError]] = List()
 
-  def validate : Boolean = {
-    _errors = List()
-
-    validations foreach { validation =>
-      validation() match {
-        case Some(error) => _errors = error :: _errors
-        case _ => true
+  def validate : List[DocumentError] = {
+    validations.foldLeft(List[DocumentError]())( (errors, validation) => {
+        validation() match {
+          case Some(error) => error :: errors
+          case None        => errors
+        }
       }
-    }
-
-    _errors match {
-      case List() => true
-      case _ => false
-    }
+    )
   }
 
 	def save = meta.save(this)
@@ -212,7 +203,7 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	/*
 	* Save a document to the db
 	*/
-	def save(in: BaseDocument) : Boolean = {
+	def save(in: BaseDocument) : List[DocumentError] = {
     MongoDB.use(mongoIdentifier) (db => {
       save(in, db)
     })
@@ -221,18 +212,19 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	/*
 	* Save a document to the db using the given Mongo instance
 	*/
-	def save(in: BaseDocument, db: DB) : Boolean = {
+	def save(in: BaseDocument, db: DB) : List[DocumentError] = {
     in match {
       case md:MongoDocument[_] => 
         md.validate match {
-          case true =>
+          case List() =>
             saveWithoutValidation(in, db)
-            true
-          case _ => false
+            List()
+          case errors =>
+            errors
         }
       case _ =>
         saveWithoutValidation(in, db)
-        true
+        List()
     }
 	}
 
@@ -253,18 +245,19 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	/*
 	* Update document with a JObject query
 	*/
-	def update(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) {
+	def update(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) : List[DocumentError] = {
     newbd match {
       case md:MongoDocument[_] => 
         md.validate match {
-          case true =>
+          case List() =>
             updateWithoutValidation(qry, newbd, opts :_*)
-            true
-          case _ => false
+            List()
+          case errors =>
+            errors
         }
       case _ =>
         updateWithoutValidation(qry, newbd, opts :_*)
-        true
+        List()
     }
 	}
 
