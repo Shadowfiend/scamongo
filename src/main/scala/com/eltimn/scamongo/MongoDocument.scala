@@ -46,7 +46,7 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
   def validate : Boolean = {
     errors = List()
 
-    for (validation <- validations) {
+    validations foreach { validation =>
       validation() match {
         case Some(error) => errors = error :: errors
         case _ => true
