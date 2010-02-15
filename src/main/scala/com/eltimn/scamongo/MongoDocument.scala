@@ -20,25 +20,50 @@ import net.liftweb.json.JsonAST.JObject
 
 import com.mongodb._
 
+class DocumentError
+object DocumentError {
+  implicit def tupleToFieldError(tuple:(String, String)) : DocumentError = tuple match {
+    case (field, message) => FieldError(field, message)
+  }
+}
+
+case class FieldError(field: String, message: String) extends DocumentError
+
 /*
 * extend case class with this trait
 */
 trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 	self: BaseDocument =>
 
-  var errors = List()
+  var errors : List[DocumentError] = List()
 
 	def _id: Any
 
 	def meta: MongoDocumentMeta[BaseDocument]
 
-  def validate : Boolean
+  def validations:List[()=>Option[DocumentError]] = List()
+
+  def validate : Boolean = {
+    errors = List()
+
+    for (validation <- validations) {
+      validation() match {
+        case Some(error) => errors = error :: errors
+        case _ => true
+      }
+    }
+
+    errors match {
+      case List() => true
+      case _ => false
+    }
+  }
+
 	def save = meta.save(this)
 
 	def delete {
 		meta.delete("_id", _id)
 	}
-
 
 	def getRef: MongoRef = MongoRef(meta.collectionName, _id.toString)
 }
