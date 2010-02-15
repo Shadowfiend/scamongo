@@ -197,10 +197,9 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	*/
 	def save(in: BaseDocument, db: DB) : Boolean = {
     in match {
-      case md:MongoDocument[BaseDocument] => 
-        md.validate
-        md.errors match {
-          case List() =>
+      case md:MongoDocument[_] => 
+        md.validate match {
+          case true =>
             saveWithoutValidation(in, db)
             true
           case _ => false
@@ -230,10 +229,9 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	*/
 	def update(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) {
     newbd match {
-      case md:MongoDocument[BaseDocument] => 
-        md.validate
-        md.errors match {
-          case List() =>
+      case md:MongoDocument[_] => 
+        md.validate match {
+          case true =>
             updateWithoutValidation(qry, newbd, opts :_*)
             true
           case _ => false
