@@ -8,8 +8,8 @@ import scala.collection.mutable.HashMap
 
 import java.lang.reflect.{Constructor => JConstructor, Field, Type, Method}
 
-trait CustomDeserialization[BaseDocument] { self:MongoDocumentMeta[BaseDocument] =>
-  def create(in:JObject)(implicit formats: Formats) : BaseDocument = {
+trait CustomDeserialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] {
+  override def create(in:JObject)(implicit formats: Formats) : BaseDocument = {
     fromJObject(in)
   }
 
@@ -17,8 +17,6 @@ trait CustomDeserialization[BaseDocument] { self:MongoDocumentMeta[BaseDocument]
 }
 
 trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] {
-  self: MongoDocumentMeta[BaseDocument] =>
-
   private var fieldMethodMap = HashMap.empty[String, Method]
 
   def fromJObject(jobject:JObject) : BaseDocument = {
