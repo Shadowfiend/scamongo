@@ -20,15 +20,6 @@ import net.liftweb.json.JsonAST.JObject
 
 import com.mongodb._
 
-class DocumentError
-object DocumentError {
-  implicit def tupleToFieldError(tuple:(String, String)) : DocumentError = tuple match {
-    case (field, message) => FieldError(field, message)
-  }
-}
-
-case class FieldError(field: String, message: String) extends DocumentError
-
 /*
 * extend case class with this trait
 */
@@ -214,7 +205,7 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	*/
 	def save(in: BaseDocument, db: DB) : List[DocumentError] = {
     in match {
-      case md:MongoDocument[_] => 
+      case md:Validation => 
         md.validate match {
           case List() =>
             saveWithoutValidation(in, db)
@@ -247,7 +238,7 @@ trait MongoDocumentMeta[BaseDocument] extends JsonObjectMeta[BaseDocument] with 
 	*/
 	def update(qry: JObject, newbd: BaseDocument, opts: UpdateOption*) : List[DocumentError] = {
     newbd match {
-      case md:MongoDocument[_] => 
+      case md:Validation => 
         md.validate match {
           case List() =>
             updateWithoutValidation(qry, newbd, opts :_*)
