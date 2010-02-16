@@ -14,7 +14,7 @@ trait NullSkippingSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocu
   private val fieldNameMethodMap =
     new HashMap[String, Method] ++
           (for (method <- clazz.getMethods;
-                methodName = method.getName;
+                methodName = method.getName if methodName.length > 4;
                 fieldName = methodName.substring(0, methodName.length - 4)
                 if methodName.endsWith("_$eq"))
             yield (fieldName -> clazz.getMethod(fieldName)))
