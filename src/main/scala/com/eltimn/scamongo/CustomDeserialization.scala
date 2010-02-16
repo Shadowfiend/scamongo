@@ -20,16 +20,22 @@ trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocu
   private val clazz = Class.forName(
     this.getClass.getName.substring(0, this.getClass.getName.length - 1))
   private val constructor = clazz.getDeclaredConstructor()
+  private val fieldNameMethodMap =
+    new HashMap[String, Method] ++
+          (for (method <- clazz.getMethods;
+               methodName = method.getName
+               if methodName.endsWith("_$eq"))
+            yield (methodName.substring(0, methodName.length - 4) -> method))
 
   def fromJObject(jobject:JObject) : BaseDocument = {
     val baseInstance = constructor.newInstance().asInstanceOf[BaseDocument]
 
     val objectMap = jobject.values
+    println(fieldNameMethodMap)
     objectMap.keys foreach { key =>
-      try {
-        clazz.getField(key).set(baseInstance, objectMap(key))
-      } catch {
-        case exc:NoSuchFieldException => // We ignore this field.
+      fieldNameMethodMap.get(key) match {
+        case Some(fieldSetter) => fieldSetter.invoke(baseInstance, objectMap(key).asInstanceOf[Object])
+        case None              => // Don't do anything with this field.
       }
     }
 
