@@ -30,18 +30,6 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 
 	def meta: MongoDocumentMeta[BaseDocument]
 
-  def validations:List[()=>Option[DocumentError]] = List()
-
-  def validate : List[DocumentError] = {
-    validations.foldLeft(List[DocumentError]())( (errors, validation) => {
-        validation() match {
-          case Some(error) => error :: errors
-          case None        => errors
-        }
-      }
-    )
-  }
-
 	def save = meta.save(this)
 
 	def delete {
@@ -49,6 +37,10 @@ trait MongoDocument[BaseDocument] extends JsonObject[BaseDocument] {
 	}
 
 	def getRef: MongoRef = MongoRef(meta.collectionName, _id.toString)
+}
+
+trait ValidatingMongoDocument[BaseDocument] extends MongoDocument[BaseDocument] with Validation {
+  self: BaseDocument =>
 }
 
 /*
