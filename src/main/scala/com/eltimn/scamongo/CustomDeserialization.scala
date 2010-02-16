@@ -17,17 +17,17 @@ trait CustomDeserialization[BaseDocument] extends MongoDocumentMeta[BaseDocument
 }
 
 trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] {
-  private var fieldMethodMap = HashMap.empty[String, Method]
+  private val clazz = Class.forName(
+    this.getClass.getName.substring(0, this.getClass.getName.length - 1))
+  private val constructor = clazz.getDeclaredConstructor()
 
   def fromJObject(jobject:JObject) : BaseDocument = {
-    val className = this.getClass.getName
-    val constructor = Class.forName(className.substring(0, className.length - 1)).getDeclaredConstructor()
     val baseInstance = constructor.newInstance().asInstanceOf[BaseDocument]
 
     val objectMap = jobject.values
     objectMap.keys foreach { key =>
       try {
-        this.getClass.getField(key).set(baseInstance, objectMap(key))
+        clazz.getField(key).set(baseInstance, objectMap(key))
       } catch {
         case exc:NoSuchFieldException => // We ignore this field.
       }
