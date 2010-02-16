@@ -2,3 +2,4 @@ project/boot
 lib_managed
 lib
 target
+*.swp
