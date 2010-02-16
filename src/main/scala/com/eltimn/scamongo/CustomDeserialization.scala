@@ -20,7 +20,8 @@ trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocu
   private var fieldMethodMap = HashMap.empty[String, Method]
 
   def fromJObject(jobject:JObject) : BaseDocument = {
-    val constructor = this.getClass.getDeclaredConstructor()
+    val className = this.getClass.getName
+    val constructor = Class.forName(className.substring(0, className.length - 1)).getDeclaredConstructor()
     val baseInstance = constructor.newInstance().asInstanceOf[BaseDocument]
 
     val objectMap = jobject.values
