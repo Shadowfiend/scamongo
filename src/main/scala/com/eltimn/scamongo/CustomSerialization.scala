@@ -15,8 +15,8 @@ trait NullSkippingSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocu
     new HashMap[String, Method] ++
           (for (method <- clazz.getMethods;
                 methodName = method.getName if methodName.length > 4;
-                fieldName = methodName.substring(0, methodName.length - 4)
-                if methodName.endsWith("_$eq"))
+                fieldName = methodName.substring(0, methodName.length - 4) if methodName.endsWith("_$eq");
+                if !fieldName.contains("$"))
             yield (fieldName -> clazz.getMethod(fieldName)))
 
   override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
