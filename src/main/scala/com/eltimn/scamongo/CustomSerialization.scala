@@ -31,6 +31,8 @@ trait NullSkippingSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocu
       case intVal:Int   => JInt(intVal)
       case bInt:BigInt  => JInt(bInt)
       case bool:Boolean => JBool(bool)
+      case Some(option) => convertValueToJValue(option)
+      case None         => null
       case null         => null
       case _ => convertUnknownToJValue(value.asInstanceOf[AnyRef])
     }

@@ -33,8 +33,15 @@ trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocu
     val objectMap = jobject.values
     objectMap.keys foreach { key =>
       fieldNameMethodMap.get(key) match {
-        case Some(fieldSetter) => fieldSetter.invoke(baseInstance, objectMap(key).asInstanceOf[Object])
-        case None              => // Don't do anything with this field.
+        case Some(fieldSetter) =>
+          try {
+            fieldSetter.invoke(baseInstance, objectMap(key).asInstanceOf[Object])
+          } catch {
+            // Try to see if we tried to set the value where it needed an option
+            // for the value.
+            case _:IllegalArgumentException => fieldSetter.invoke(baseInstance, Some(objectMap(key)))
+          }
+        case None => // Don't do anything with this field.
       }
     }
 
