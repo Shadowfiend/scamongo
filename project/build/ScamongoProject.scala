@@ -1,9 +1,8 @@
 import sbt._
 
 class ScamongoProject(info: ProjectInfo) extends DefaultProject(info) {
-	override def useMavenConfigurations = true
-	
 	override def compileOptions = super.compileOptions ++ Seq(Unchecked)
+    override def disableCrossPaths = true
 	
 	val mongo = "org.mongodb" % "mongo-java-driver" % "1.2.1" % "compile->default"
 
