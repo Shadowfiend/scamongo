@@ -7,20 +7,26 @@ import scala.collection.mutable.HashMap
 
 import java.lang.reflect.Method
 
-trait NullSkippingSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] {
-  private val clazz = Class.forName(
-    this.getClass.getName.substring(0, this.getClass.getName.length - 1))
-  // Map field names to their getter methods, but only if they have a setter method.
-  private val fieldNameMethodMap =
-    new HashMap[String, Method] ++
-          (for (method <- clazz.getMethods;
-                methodName = method.getName if methodName.endsWith("_$eq");
-                fieldName = methodName.substring(0, methodName.length - 4) if !fieldName.contains("$"))
-            yield (fieldName -> clazz.getMethod(fieldName)))
+/**
+ * Mix in this trait if your object is serializable to a JObject.
+ */
+trait JObjectSerializable {
+  def toJObject : JObject
+}
 
+/**
+ * Mix in this trait if your object is serializable to a JValue. Note that
+ * JObjectSerializable is more appropriate if you serialize to a multi-field
+ * object.
+ */
+trait JValueSerializable {
+  def toJValue : JValue
+}
+
+trait CustomSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] with ClassData {
   override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
-    JObject((for ((field, method) <- fieldNameMethodMap if in != null)
-      yield JField(field, convertValueToJValue(method.invoke(in)))).toList.filter { _.value != null })
+    JObject((for ((field, method) <- fieldNameGetterMap if in != null)
+      yield JField(field, convertValueToJValue(method.invoke(in)))).toList)
   }
 
   protected def convertValueToJValue(value: Any): JValue = {
@@ -38,12 +44,31 @@ trait NullSkippingSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocu
   }
 
   protected def convertUnknownToJValue(value: AnyRef): JValue = {
-    val clazz = value.getClass
-    clazz.getMethods.find { method => method.getName == "toJObject" || method.getName == "toJValue" } match {
-      case Some(method) => method.invoke(value).asInstanceOf[JValue]
-      case None => null
+    value match {
+      case jobjectSerializable:JObjectSerializable => jobjectSerializable.toJObject
+      case jvalueSerializable:JValueSerializable   => jvalueSerializable.toJValue
+      case _ => null
     }
   }
+}
+
+trait NullSkippingSerialization[BaseDocument] extends CustomSerialization[BaseDocument] {
+  override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
+    JObject(super.toJObject(in)(formats).obj.filter { _.value != null })
+  }
+}
+
+trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[BaseDocument] {
+  override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
+    val clazz:Class[_] = in.getClass
+    if (unserializableTypes.contains(clazz)) return super.toJObject(in)(formats)
+
+    val className = clazz.getName
+
+    JObject(JField("scamongoType", JString(className)) :: super.toJObject(in)(formats).obj)
+  }
+
+  def unserializableTypes: List[Class[_]] = List()
 }
 
 }
