@@ -32,7 +32,19 @@ package com.eltimn.scamongo {
       objectMap.keys foreach { key =>
         fieldNameMethodMap.get(key) match {
           case Some(fieldSetter) =>
-            setFieldWithOptionFallback(baseInstance, fieldSetter, objectMap(key))
+            // We want the value to be a JObject or JArray instead of a List
+            // or Map when it reaches setField so decisions can be made based on the
+            // JSON type.
+            //
+            // TODO We may want this to always be a JValue and then
+            // TODO deserialize similarly to convertValueToJValue in the
+            // TODO serializers.
+            var value:Any = objectMap(key) match {
+              case list:List[_] => (jobject \ key).asInstanceOf[JField].value
+              case map:Map[_,_] => (jobject \ key).asInstanceOf[JField].value
+              case value        => value
+            }
+            setFieldWithOptionFallback(baseInstance, fieldSetter, value)
           case None => // Don't do anything with this field.
         }
       }
