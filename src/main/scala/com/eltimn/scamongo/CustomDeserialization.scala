@@ -5,7 +5,7 @@ package com.eltimn.scamongo {
   import scala.collection.mutable.Map
 
   import net.liftweb.json.Formats
-  import net.liftweb.json.JsonAST.{JObject, JArray}
+  import net.liftweb.json.JsonAST.{JObject, JArray, JField, _}
   import net.liftweb.util.Log
 
   trait CustomDeserialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] {
@@ -64,7 +64,7 @@ package com.eltimn.scamongo {
     }
   }
 
-  trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] with ClassData {
+  trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] with ClassDataForObject {
     def fromJObject(jobject: JObject): BaseDocument = {
       val baseInstance = constructor.newInstance().asInstanceOf[BaseDocument]
 
@@ -73,7 +73,19 @@ package com.eltimn.scamongo {
         fieldNameSetterMap.get(key) match {
           case Some(fieldSetter) =>
             try {
-              fieldSetter.invoke(baseInstance, objectMap(key).asInstanceOf[Object])
+              // We want the value to be a JObject or JArray instead of a List
+              // or Map when it reaches setField so decisions can be made based on the
+              // JSON type.
+              //
+              // TODO We may want this to always be a JValue and then
+              // TODO deserialize similarly to convertValueToJValue in the
+              // TODO serializers.
+              var value:Any = objectMap(key) match {
+                case list:List[_] => (jobject \ key).asInstanceOf[JField].value
+                case map:Map[_,_] => (jobject \ key).asInstanceOf[JField].value
+                case value        => value
+              }
+              setField(baseInstance, fieldSetter, value)
             } catch {
               // Try to see if we tried to set the value where it needed an option
               // for the value.
@@ -119,11 +131,10 @@ package com.eltimn.scamongo {
     }
 
     def listFromJArray(array:JArray) = {
-      array.values.map { value => fromJObject(value.asInstanceOf[JObject]) }
+      array.arr.map { value => fromJObject(value.asInstanceOf[JObject]) }
     }
 
     def classForName(className:String) = getClass.getClassLoader.loadClass(className).asInstanceOf[Class[BaseDocument]]
   }
-
 
 }
