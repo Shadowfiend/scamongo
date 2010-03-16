@@ -42,9 +42,11 @@ trait JValueSerialization {
   protected def convertValueToJValue(value: Any): JValue = {
     value match {
       case str:String   => JString(str)
+      case float:Float  => JDouble(float)
       case doub:Double  => JDouble(doub)
       case intVal:Int   => JInt(intVal)
       case bInt:BigInt  => JInt(bInt)
+      case long:Long    => JInt(long)
       case bool:Boolean => JBool(bool)
       case Some(option) => convertValueToJValue(option)
       case None         => null
@@ -144,6 +146,10 @@ trait NullSkippingSerialization[BaseDocument] extends CustomSerialization[BaseDo
  * when deserializing these, they will be deserialized with the base document's
  * fromJObject method. This is thus best suited to not include the type on the
  * associated document, but serialize the types of any subclasses.
+ *
+ * FIXME We may want to be with NullSkippingSerialization, since
+ * TypingSerialization includes ClassData, which includes some extraneous
+ * properties that require omission.
  */
 trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[BaseDocument] {
   override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {

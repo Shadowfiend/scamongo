@@ -148,5 +148,4 @@ package com.eltimn.scamongo {
 
     def classForName(className:String) = getClass.getClassLoader.loadClass(className).asInstanceOf[Class[BaseDocument]]
   }
-
 }
