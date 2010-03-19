@@ -25,26 +25,16 @@ package com.eltimn.scamongo {
      *
      * Also correctly converts JArrays to Lists before performing an assignment.
      */
-    def fromJObject(jobject: JObject, clazz: Class[BaseDocument], fieldNameMethodMap: Map[String, Method]) = {
-      val baseInstance = clazz.getDeclaredConstructor().newInstance().asInstanceOf[BaseDocument]
+    def fromJObject[T](jobject: JObject, clazz: Class[T], fieldNameMethodMap: Map[String, Method]) = {
+      val baseInstance = clazz.getDeclaredConstructor().newInstance()
 
       val objectMap = jobject.values
       objectMap.keys foreach { key =>
         fieldNameMethodMap.get(key) match {
           case Some(fieldSetter) =>
-            // We want the value to be a JObject or JArray instead of a List
-            // or Map when it reaches setField so decisions can be made based on the
-            // JSON type.
-            //
-            // TODO We may want this to always be a JValue and then
-            // TODO deserialize similarly to convertValueToJValue in the
-            // TODO serializers.
-            var value:Any = objectMap(key) match {
-              case list:List[_] => (jobject \ key).asInstanceOf[JField].value
-              case map:Map[_,_] => (jobject \ key).asInstanceOf[JField].value
-              case value        => value
-            }
-            setFieldWithOptionFallback(baseInstance, fieldSetter, value)
+            setFieldWithOptionFallback(baseInstance, fieldSetter,
+              convertValueFromJValue((jobject \ key).asInstanceOf[JField].value,
+                                     fieldSetter.getParameterTypes()(0)))
           case None => // Don't do anything with this field.
         }
       }
@@ -53,11 +43,22 @@ package com.eltimn.scamongo {
     }
 
     /**
+     * Converts the given JValue to an Object suitable to be set on an
+     * instance. Also provides the expected class, in case the conversion
+     * requires that information (e.g., for dates stored as integer timestamps).
+     *
+     * By default, simply returns lift-json's deserialization.
+     */
+    protected def convertValueFromJValue(value: JValue, fieldType:Class[_]) = {
+      value.values.asInstanceOf[Object]
+    }
+
+    /**
      * Tries to set the field to obj using fieldSetter on instance. If setting
      * the value obj fails, attempts to set it to Some(obj), in case the field
      * takes Options.
      */
-    protected def setFieldWithOptionFallback(baseInstance:BaseDocument, fieldSetter:Method, obj:Any) = {
+    protected def setFieldWithOptionFallback[T](baseInstance: T, fieldSetter: Method, obj: Any) = {
       try {
         setField(baseInstance, fieldSetter, obj)
       } catch {
@@ -71,44 +72,13 @@ package com.eltimn.scamongo {
      * Tries to set the field to obj using fieldSetter on instance. Subclasses
      * should override this method to handle special types (e.g., Lists).
      */
-    protected def setField(instance:BaseDocument, fieldSetter:Method, obj:Any) = {
+    protected def setField[T](instance: T, fieldSetter: Method, obj: Any) = {
       fieldSetter.invoke(instance, obj.asInstanceOf[Object])
     }
   }
 
-  trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] with ClassDataForObject {
-    def fromJObject(jobject: JObject): BaseDocument = {
-      val baseInstance = constructor.newInstance().asInstanceOf[BaseDocument]
-
-      val objectMap = jobject.values
-      objectMap.keys foreach { key =>
-        fieldNameSetterMap.get(key) match {
-          case Some(fieldSetter) =>
-            try {
-              // We want the value to be a JObject or JArray instead of a List
-              // or Map when it reaches setField so decisions can be made based on the
-              // JSON type.
-              //
-              // TODO We may want this to always be a JValue and then
-              // TODO deserialize similarly to convertValueToJValue in the
-              // TODO serializers.
-              var value:Any = objectMap(key) match {
-                case list:List[_] => (jobject \ key).asInstanceOf[JField].value
-                case map:Map[_,_] => (jobject \ key).asInstanceOf[JField].value
-                case value        => value
-              }
-              setField(baseInstance, fieldSetter, value)
-            } catch {
-              // Try to see if we tried to set the value where it needed an option
-              // for the value.
-              case _:IllegalArgumentException => fieldSetter.invoke(baseInstance, Some(objectMap(key)))
-            }
-          case None => // Don't do anything with this field.
-        }
-      }
-
-      baseInstance
-    }
+  trait SimpleDeserialization[BaseDocument] extends CustomDeserialization[BaseDocument] with ClassDataForObject[BaseDocument] {
+    def fromJObject(jobject: JObject): BaseDocument = fromJObject(jobject, clazz, fieldNameSetterMap)
   }
 
   /**
@@ -133,12 +103,18 @@ package com.eltimn.scamongo {
       }
     }
 
-    override protected def setField(instance: BaseDocument, fieldSetter: Method, obj: Any) = {
-      obj match {
-        case array:JArray =>
-          fieldSetter.invoke(instance, listFromJArray(array))
-        case nonarray =>
-          fieldSetter.invoke(instance, nonarray.asInstanceOf[Object])
+
+    /**
+     * Converts the given JValue to an Object suitable to be set on an
+     * instance, including deserializing lists and objects as needed.
+     *
+     * By default, simply returns lift-json's deserialization.
+     */
+    override protected def convertValueFromJValue(value: JValue, fieldType:Class[_]) = {
+      value match {
+        case jarray:JArray   => listFromJArray(jarray)
+        case jobject:JObject => fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
+        case _ => super.convertValueFromJValue(value, fieldType)
       }
     }
 

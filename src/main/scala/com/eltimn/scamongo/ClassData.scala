@@ -50,13 +50,18 @@ package com.eltimn.scamongo {
 
   /**
    * Mix in this trait for the same effect as ClassData. The key difference is
-   * that this should be used in objects instead of classes. The key here is a
-   * manipulation done to determine the clazz object that is inferred. For
-   * objects, the name that is derived is different.
+   * that this should be used in (singleton) objects instead of classes. The
+   * key here is a manipulation done to determine the clazz object that is
+   * inferred. For singleton objects, the name that is derived is different.
    */
-  trait ClassDataForObject extends ClassDataExtraction {
-    protected val clazz = Class.forName(
-      this.getClass.getName.substring(0, this.getClass.getName.length - 1))
+  trait ClassDataForObject[T] extends ClassDataExtraction {
+    /**
+     * We do not want to singleton object's class here, so we look up its
+     * companion class by name, using the fact that the singleton is named
+     * Class$, where Class is the name of the companion class.
+     */
+    protected val clazz:Class[T] = Class.forName(
+      this.getClass.getName.substring(0, this.getClass.getName.length - 1)).asInstanceOf[Class[T]]
     protected val constructor = clazz.getDeclaredConstructor()
     protected val fieldNameSetterMap = fieldSetterMapForClass(clazz)
     protected val fieldNameGetterMap = fieldGetterMapForClass(clazz)

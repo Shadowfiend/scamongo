@@ -116,7 +116,7 @@ trait JObjectTypingSerializable extends JObjectBasicSerializable {
  * MongoDocumentMeta objects. This implementation replaces the default
  * MongoDocumentMeta implementation to do simple field-based serialization.
  */
-trait CustomSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] with ClassDataForObject with JValueSerialization {
+trait CustomSerialization[BaseDocument] extends MongoDocumentMeta[BaseDocument] with ClassDataForObject[BaseDocument] with JValueSerialization {
   override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
     JObject((for ((field, method) <- fieldNameGetterMap if in != null)
       yield JField(field, convertValueToJValue(method.invoke(in)))).toList)
