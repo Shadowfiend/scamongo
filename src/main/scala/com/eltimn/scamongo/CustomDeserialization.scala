@@ -22,8 +22,6 @@ package com.eltimn.scamongo {
      *
      * Note that this requires that the clazz object have a default
      * (no-argument) constructor.
-     *
-     * Also correctly converts JArrays to Lists before performing an assignment.
      */
     def fromJObject[T](jobject: JObject, clazz: Class[T], fieldNameMethodMap: Map[String, Method]) = {
       val baseInstance = clazz.getDeclaredConstructor().newInstance()
@@ -96,13 +94,14 @@ package com.eltimn.scamongo {
 
       objectMap.get("scamongoType") match {
         case None => super.fromJObject(jobject)
-        case Some(typeName:String) =>
-          val clazz = classForName(typeName)
-
-          fromJObject(jobject, clazz, fieldSetterMapForClass(clazz))
+        case Some(typeName:String) => fromJObject(jobject, typeName).asInstanceOf[BaseDocument]
       }
     }
 
+    def fromJObject(jobject: JObject, typeName: String): Object = {
+      val clazz = classForName(typeName)
+      fromJObject(jobject, clazz, fieldSetterMapForClass(clazz)).asInstanceOf[Object]
+    }
 
     /**
      * Converts the given JValue to an Object suitable to be set on an
@@ -113,15 +112,19 @@ package com.eltimn.scamongo {
     override protected def convertValueFromJValue(value: JValue, fieldType:Class[_]) = {
       value match {
         case jarray:JArray   => listFromJArray(jarray)
-        case jobject:JObject => fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
+        case jobject:JObject =>
+          jobject.values.get("scamongoType") match {
+            case None => fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
+            case Some(typeName:String) => fromJObject(jobject, typeName)
+          }
         case _ => super.convertValueFromJValue(value, fieldType)
       }
     }
 
     def listFromJArray(array:JArray) = {
-      array.arr.map { value => fromJObject(value.asInstanceOf[JObject]) }
+      array.arr.map { value => convertValueFromJValue(value, clazz) }
     }
 
-    def classForName(className:String) = getClass.getClassLoader.loadClass(className).asInstanceOf[Class[BaseDocument]]
+    def classForName(className:String) = getClass.getClassLoader.loadClass(className)
   }
 }
