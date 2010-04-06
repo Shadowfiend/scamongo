@@ -48,7 +48,10 @@ package com.eltimn.scamongo {
      * By default, simply returns lift-json's deserialization.
      */
     protected def convertValueFromJValue(value: JValue, fieldType:Class[_]) = {
-      value.values.asInstanceOf[Object]
+      value match {
+        case JInt(bigInt) => if (fieldType == classOf[Int]) bigInt.intValue else bigInt
+        case _ => value.values.asInstanceOf[Object]
+      }
     }
 
     /**
