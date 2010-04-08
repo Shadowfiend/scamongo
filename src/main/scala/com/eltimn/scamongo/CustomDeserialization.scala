@@ -49,7 +49,9 @@ package com.eltimn.scamongo {
      */
     protected def convertValueFromJValue(value: JValue, fieldType:Class[_]) = {
       value match {
-        case JInt(bigInt) => if (fieldType == classOf[Int]) bigInt.intValue else bigInt
+        case JInt(bigInt) if (fieldType == classOf[Int]) => bigInt.intValue
+        case JDouble(double) if (fieldType == classOf[Int]) => double.toInt
+        case JDouble(double) if (fieldType == classOf[BigInt]) => BigDecimal(double).toBigInt
         case _ => value.values.asInstanceOf[Object]
       }
     }
