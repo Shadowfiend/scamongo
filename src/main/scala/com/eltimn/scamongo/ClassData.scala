@@ -24,11 +24,14 @@ package com.eltimn.scamongo {
      * class, but only if they have setter methods.
      */
     def fieldGetterMapForClass(clazz:Class[_]) = {
+      val methods = clazz.getMethods
       new HashMap[String, Method] ++
-            (for (method <- clazz.getMethods;
+            (for (method <- methods;
                   methodName = method.getName if methodName.endsWith("_$eq");
-                  fieldName = methodName.substring(0, methodName.length - 4) if !fieldName.contains("$"))
-              yield (fieldName -> clazz.getMethod(fieldName)))
+                  fieldName = methodName.substring(0, methodName.length - 4) if !fieldName.contains("$") &&
+                                                                                methods.exists { m => m.getName == fieldName };
+                  getter = clazz.getMethod(fieldName))
+              yield (fieldName -> getter))
     }
   }
 
