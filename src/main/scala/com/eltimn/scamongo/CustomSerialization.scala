@@ -170,6 +170,7 @@ trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[Ba
   override protected def convertComplexToJValue(value: AnyRef): JValue = {
     value match {
       case list:List[_] => JArray(list.map { item => convertValueToJValue(item) })
+      case map:Map[_, _] => JObject(map.map { kv => JField(kv._1.toString, convertValueToJValue(kv._2)) }.toList)
       case _ => super.convertComplexToJValue(value)
     }
   }

@@ -2,7 +2,8 @@ package com.eltimn.scamongo {
 
   import java.lang.reflect.{Field, Type, Method}
 
-  import scala.collection.mutable.Map
+  import scala.collection.Map
+  import scala.collection.mutable.HashMap
 
   import net.liftweb.json.Formats
   import net.liftweb.json.JsonAST.{JObject, JArray, JField, _}
@@ -108,6 +109,20 @@ package com.eltimn.scamongo {
       fromJObject(jobject, clazz, fieldSetterMapForClass(clazz)).asInstanceOf[Object]
     }
 
+    def mapFromJObject(jobject: JObject): scala.collection.mutable.Map[String, Object] = {
+      new scala.collection.mutable.HashMap[String, Object]() ++
+        (for (field <- jobject.obj) yield {
+          (field.name, convertValueFromJValue(field.value, classOf[Object]).asInstanceOf[Object])
+        })
+    }
+
+    def immutableMapFromJObject(jobject: JObject): scala.collection.immutable.Map[String, Object] = {
+      new scala.collection.immutable.HashMap[String, Object]() ++
+        (for (field <- jobject.obj) yield {
+          (field.name, convertValueFromJValue(field.value, classOf[Object]).asInstanceOf[Object])
+        })
+    }
+
     /**
      * Converts the given JValue to an Object suitable to be set on an
      * instance, including deserializing lists and objects as needed.
@@ -119,7 +134,14 @@ package com.eltimn.scamongo {
         case jarray:JArray   => listFromJArray(jarray)
         case jobject:JObject =>
           jobject.values.get("scamongoType") match {
-            case None => fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
+            case None =>
+
+              if (fieldType == classOf[scala.collection.Map[_, _]] || fieldType == classOf[scala.collection.mutable.Map[_, _]])
+                mapFromJObject(jobject).asInstanceOf[Object]
+              else if (fieldType == classOf[scala.collection.immutable.Map[_, _]])
+                immutableMapFromJObject(jobject).asInstanceOf[Object]
+              else
+                fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
             case Some(typeName:String) => fromJObject(jobject, typeName)
           }
         case _ => super.convertValueFromJValue(value, fieldType)
