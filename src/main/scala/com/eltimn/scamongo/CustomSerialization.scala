@@ -103,7 +103,7 @@ trait JObjectNullSkippingSerializable extends JObjectBasicSerializable {
  * Same as TypingSerializable, but for classes instead of companion objects,
  * and without handling for lists.
  */
-trait JObjectTypingSerializable extends JObjectBasicSerializable {
+trait JObjectTypingSerializable extends JObjectBasicSerializable with ListSerialization with MapSerialization {
   override def toJObject(implicit formats: Formats): JObject = {
     val className = clazz.getName
 
@@ -151,7 +151,7 @@ trait NullSkippingSerialization[BaseDocument] extends CustomSerialization[BaseDo
  * TypingSerialization includes ClassData, which includes some extraneous
  * properties that require omission.
  */
-trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[BaseDocument] {
+trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[BaseDocument] with ListSerialization with MapSerialization {
   override def toJObject(in: BaseDocument)(implicit formats: Formats): JObject = {
     val clazz:Class[_] = in.getClass
     if (unserializableTypes.contains(clazz)) return super.toJObject(in)(formats)
@@ -166,10 +166,20 @@ trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[Ba
   }
 
   def unserializableTypes: List[Class[_]] = List()
+}
 
+trait ListSerialization extends JValueSerialization {
   override protected def convertComplexToJValue(value: AnyRef): JValue = {
     value match {
       case list:List[_] => JArray(list.map { item => convertValueToJValue(item) })
+      case _ => super.convertComplexToJValue(value)
+    }
+  }
+}
+
+trait MapSerialization extends JValueSerialization {
+  override protected def convertComplexToJValue(value: AnyRef): JValue = {
+    value match {
       case map:Map[_, _] => JObject(map.map { kv => JField(kv._1.toString, convertValueToJValue(kv._2)) }.toList)
       case _ => super.convertComplexToJValue(value)
     }
