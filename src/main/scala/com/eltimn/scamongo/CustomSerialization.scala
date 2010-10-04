@@ -156,13 +156,13 @@ trait TypingSerialization[BaseDocument <: AnyRef] extends CustomSerialization[Ba
     val clazz:Class[_] = in.getClass
     if (unserializableTypes.contains(clazz)) return super.toJObject(in)(formats)
 
-    val className = clazz.getName
-    val fieldGetterMap = fieldGetterMapForClass(clazz)
+    val classInfo = ObjectClassInfoCache.classInfoFor(clazz.getName)
+    val fieldGetterMap = classInfo.fieldNameGetterMap
 
     val jobject = JObject((for ((field, method) <- fieldGetterMap)
       yield JField(field, convertValueToJValue(method.invoke(in)))).toList)
 
-    JObject(JField("scamongoType", JString(className)) :: jobject.obj)
+    JObject(JField("scamongoType", JString(classInfo.className)) :: jobject.obj)
   }
 
   def unserializableTypes: List[Class[_]] = List()

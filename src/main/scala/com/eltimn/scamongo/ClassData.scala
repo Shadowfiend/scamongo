@@ -45,10 +45,12 @@ package com.eltimn.scamongo {
    * field getters.
    */
   trait ClassData extends ClassDataExtraction {
-    protected val clazz = this.getClass
-    protected val constructor = clazz.getDeclaredConstructor()
-    protected val fieldNameSetterMap = fieldSetterMapForClass(clazz)
-    protected val fieldNameGetterMap = fieldGetterMapForClass(clazz)
+    protected val classInfo:ObjectClassInfoCache.ClassInfo =
+      ObjectClassInfoCache.classInfoFor(this.getClass.getName)
+    protected def clazz:Class[_] = classInfo.clazz
+    protected def constructor = classInfo.constructor
+    protected def fieldNameSetterMap = classInfo.fieldNameSetterMap
+    protected def fieldNameGetterMap = classInfo.fieldNameGetterMap
   }
 
   /**
@@ -57,7 +59,7 @@ package com.eltimn.scamongo {
    * allowing us to minimize the number of Method objects that are kept around.
    */
   object ObjectClassInfoCache extends ClassDataExtraction {
-    class ClassInfo(className:String) {
+    class ClassInfo(val className:String) {
       private val cachedClazz = Class.forName(className)
       def clazz[T] : Class[T] = cachedClazz.asInstanceOf[Class[T]]
 
@@ -93,9 +95,9 @@ package com.eltimn.scamongo {
      */
     protected val classInfo:ObjectClassInfoCache.ClassInfo =
       ObjectClassInfoCache.classInfoFor(this.getClass.getName.substring(0, this.getClass.getName.length - 1))
-    protected val clazz:Class[T] = classInfo.clazz
-    protected val constructor = classInfo.constructor
-    protected val fieldNameSetterMap = classInfo.fieldNameSetterMap
-    protected val fieldNameGetterMap = classInfo.fieldNameGetterMap
+    protected def clazz:Class[T] = classInfo.clazz
+    protected def constructor = classInfo.constructor
+    protected def fieldNameSetterMap = classInfo.fieldNameSetterMap
+    protected def fieldNameGetterMap = classInfo.fieldNameGetterMap
   }
 }

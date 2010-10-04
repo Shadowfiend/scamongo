@@ -105,8 +105,9 @@ package com.eltimn.scamongo {
     }
 
     def fromJObject(jobject: JObject, typeName: String): Object = {
-      val clazz = classForName(typeName)
-      fromJObject(jobject, clazz, fieldSetterMapForClass(clazz)).asInstanceOf[Object]
+      val classInfo = ObjectClassInfoCache.classInfoFor(typeName)
+
+      fromJObject(jobject, classInfo.clazz, classInfo.fieldNameSetterMap).asInstanceOf[Object]
     }
 
     def mapFromJObject(jobject: JObject): scala.collection.mutable.Map[String, Object] = {
@@ -141,7 +142,7 @@ package com.eltimn.scamongo {
               else if (fieldType == classOf[scala.collection.immutable.Map[_, _]])
                 immutableMapFromJObject(jobject).asInstanceOf[Object]
               else
-                fromJObject(jobject, fieldType, fieldSetterMapForClass(fieldType)).asInstanceOf[Object]
+                fromJObject(jobject, fieldType, ObjectClassInfoCache.classInfoFor(fieldType.getName).fieldNameSetterMap).asInstanceOf[Object]
             case Some(typeName:String) => fromJObject(jobject, typeName)
           }
         case _ => super.convertValueFromJValue(value, fieldType)
