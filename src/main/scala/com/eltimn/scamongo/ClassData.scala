@@ -24,7 +24,7 @@ package com.eltimn.scamongo {
      * class, but only if they have setter methods.
      */
     def fieldGetterMapForClass(clazz:Class[_]) = {
-      val methods = clazz.getMethods
+      val methods = clazz.getMethods // So we can omit getters without setters.
       new HashMap[String, Method] ++
             (for (method <- methods;
                   methodName = method.getName if methodName.endsWith("_$eq");
@@ -52,6 +52,34 @@ package com.eltimn.scamongo {
   }
 
   /**
+   * Provides a singleton place to store the class data for objects. This
+   * allows us to only keep one copy of the field name setter/getter maps,
+   * allowing us to minimize the number of Method objects that are kept around.
+   */
+  object ObjectClassInfoCache extends ClassDataExtraction {
+    class ClassInfo(className:String) {
+      private val cachedClazz = Class.forName(className)
+      def clazz[T] : Class[T] = cachedClazz.asInstanceOf[Class[T]]
+
+      val constructor = cachedClazz.getDeclaredConstructor()
+      val fieldNameSetterMap = fieldSetterMapForClass(cachedClazz)
+      val fieldNameGetterMap = fieldGetterMapForClass(cachedClazz)
+    }
+
+    private var cache:Map[String, ClassInfo] = new HashMap[String, ClassInfo]
+
+    def classInfoFor(className:String) : ClassInfo = {
+      (for (result <- cache.get(className)) yield result) getOrElse {
+        val info = new ClassInfo(className)
+
+        cache = cache + (className -> info)
+
+        info
+      }
+    }
+  }
+
+  /**
    * Mix in this trait for the same effect as ClassData. The key difference is
    * that this should be used in (singleton) objects instead of classes. The
    * key here is a manipulation done to determine the clazz object that is
@@ -63,10 +91,11 @@ package com.eltimn.scamongo {
      * companion class by name, using the fact that the singleton is named
      * Class$, where Class is the name of the companion class.
      */
-    protected val clazz:Class[T] = Class.forName(
-      this.getClass.getName.substring(0, this.getClass.getName.length - 1)).asInstanceOf[Class[T]]
-    protected val constructor = clazz.getDeclaredConstructor()
-    protected val fieldNameSetterMap = fieldSetterMapForClass(clazz)
-    protected val fieldNameGetterMap = fieldGetterMapForClass(clazz)
+    protected val classInfo:ObjectClassInfoCache.ClassInfo =
+      ObjectClassInfoCache.classInfoFor(this.getClass.getName.substring(0, this.getClass.getName.length - 1))
+    protected val clazz:Class[T] = classInfo.clazz
+    protected val constructor = classInfo.constructor
+    protected val fieldNameSetterMap = classInfo.fieldNameSetterMap
+    protected val fieldNameGetterMap = classInfo.fieldNameGetterMap
   }
 }
